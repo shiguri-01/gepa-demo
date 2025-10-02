@@ -18,7 +18,17 @@ export const isDominated = ({
     );
   }
 
-  return !target.some((value, i) => value > baseline[i]);
+  const hasAdvantage = target.some((value, i) => value > baseline[i]);
+  if (hasAdvantage) {
+    return false;
+  }
+
+  const allEqual = target.every((value, i) => value === baseline[i]);
+  if (allEqual) {
+    return false;
+  }
+
+  return true;
 };
 
 /**
