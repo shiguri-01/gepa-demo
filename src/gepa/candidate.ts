@@ -1,3 +1,4 @@
+import type { Report } from "./eval";
 import { isDominated, type ScoreVector } from "./score";
 
 export type Candidate = {
@@ -5,6 +6,7 @@ export type Candidate = {
   prompt: string;
   scores: ScoreVector;
   parentIds: string[]; // どの候補から生成されたか
+  trainReport?: Report; // トレーニングバッチでの評価結果（キャッシュ用）
 };
 
 export type CandidatePool = Candidate[];

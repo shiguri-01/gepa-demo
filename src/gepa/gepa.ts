@@ -89,6 +89,36 @@ const mutatePrompt = async (feedbackReport: Report): Promise<string> => {
   return response?.text?.trim() ?? "";
 };
 
+/**
+ * 候補のトレーニング評価結果をキャッシュから取得するか、新規に評価する
+ */
+const getOrEvaluateOnTrain = async ({
+  candidate,
+  trainTaskBatch,
+  agent,
+  evaluationAgent,
+}: {
+  candidate: Candidate;
+  trainTaskBatch: TaskItem[];
+  agent: Agent;
+  evaluationAgent: Agent;
+}): Promise<Report> => {
+  if (candidate.trainReport) {
+    return candidate.trainReport;
+  }
+
+  const report = await evaluateTaskBatch({
+    systemPrompt: candidate.prompt,
+    taskBatch: trainTaskBatch,
+    agent,
+    evaluationAgent,
+  });
+
+  // キャッシュに保存
+  candidate.trainReport = report;
+  return report;
+};
+
 export const gepaCycle = async ({
   candidatePool,
   budget,
@@ -113,9 +143,9 @@ export const gepaCycle = async ({
   const parent = pickCandidate(candidatePool);
   logger.debug({ parent }, "Selected parent candidate");
 
-  const feedbackReport = await evaluateTaskBatch({
-    systemPrompt: parent.prompt,
-    taskBatch: trainTaskBatch,
+  const feedbackReport = await getOrEvaluateOnTrain({
+    candidate: parent,
+    trainTaskBatch,
     agent,
     evaluationAgent,
   });
@@ -166,6 +196,7 @@ export const gepaCycle = async ({
     prompt: proposalPrompt,
     scores: testScores,
     parentIds: [parent.id],
+    trainReport: proposalReport,
   };
   logger.info({ newCandidate }, "New candidate accepted");
 

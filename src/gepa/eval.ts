@@ -104,7 +104,7 @@ export const evaluateTaskBatch = async ({
   // Ollamaがタイムアウトしたり、APIのレートリミットに引っかかったりするため、逐次処理とする
   const results: ReportItem[] = [];
   for (const [i, item] of taskBatch.entries()) {
-    logger.info(`Evaluating task ${i + 1} / ${taskBatch.length}`);
+    logger.debug(`Evaluating task ${i + 1} / ${taskBatch.length}`);
 
     const result = await evaluateTaskItem({
       systemPrompt,
