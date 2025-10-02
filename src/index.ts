@@ -12,7 +12,7 @@ import {
 
 const task = logicalThinkingTask;
 const { train, test } = splitTrainTest(task, {
-  trainRatio: 0.25,
+  trainRatio: 0.4,
   shuffle: true,
   seed: 42,
 });
@@ -22,7 +22,7 @@ logger.debug({ train, test }, "tasks");
 
 const result = await runGepa({
   initialPrompt: initialSystemPrompt,
-  budget: 20,
+  budget: 24,
   agent: logicalThinkingAgent,
   trainTaskBatch: train,
   testTaskBatch: test,

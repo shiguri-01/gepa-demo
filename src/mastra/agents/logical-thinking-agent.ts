@@ -6,7 +6,7 @@ import { ollama } from "ollama-ai-provider-v2";
 export const logicalThinkingAgent = new Agent({
   name: "Logical Thinking Agent",
   instructions: "",
-  model: ollama("gemma3:1b"),
+  model: ollama("gemma3:4b"),
   memory: new Memory({
     storage: new LibSQLStore({
       url: "file:../mastra.db", // path is relative to the .mastra/output directory
