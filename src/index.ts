@@ -1,6 +1,10 @@
 import { runGepa } from "./gepa/gepa";
 import { splitTrainTest } from "./gepa/task";
-import { logicalThinkingTask } from "./mastra/agents/logical-evaluation-agent";
+import { logger } from "./logger";
+import {
+  logicalEvaluationAgent,
+  logicalThinkingTask,
+} from "./mastra/agents/logical-evaluation-agent";
 import {
   initialSystemPrompt,
   logicalThinkingAgent,
@@ -13,7 +17,8 @@ const { train, test } = splitTrainTest(task, {
   seed: 42,
 });
 
-console.info("Running GEPA...");
+logger.info("Running GEPA...");
+logger.debug({ train, test }, "tasks");
 
 const result = await runGepa({
   initialPrompt: initialSystemPrompt,
@@ -21,6 +26,7 @@ const result = await runGepa({
   agent: logicalThinkingAgent,
   trainTaskBatch: train,
   testTaskBatch: test,
+  evaluationAgent: logicalEvaluationAgent,
 });
 
-console.info("GEPA run completed:", result);
+logger.info({ result }, "GEPA run completed");

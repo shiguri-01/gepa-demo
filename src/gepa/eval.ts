@@ -1,6 +1,6 @@
 import type { Agent } from "@mastra/core/agent";
 import z from "zod";
-import { logicalEvaluationAgent } from "../mastra/agents/logical-evaluation-agent";
+import { logger } from "@/logger";
 import type { ScoreVector } from "./score";
 import type { TaskItem } from "./task";
 
@@ -55,17 +55,19 @@ const evaluateTaskItem = async ({
   systemPrompt,
   taskItem,
   agent,
+  evaluationAgent,
 }: {
   systemPrompt: string;
   taskItem: TaskItem;
   agent: Agent;
+  evaluationAgent: Agent;
 }): Promise<ReportItem> => {
   const answerRes = await agent.generateVNext(taskItem.question, {
     instructions: systemPrompt,
   });
   const answer = answerRes?.text?.trim() ?? "";
 
-  const evaluationRes = await logicalEvaluationAgent.generateVNext(
+  const evaluationRes = await evaluationAgent.generateVNext(
     generateEvaluationPrompt(taskItem, answer),
     {
       output: evaluationSchema,
@@ -92,18 +94,23 @@ export const evaluateTaskBatch = async ({
   systemPrompt,
   taskBatch,
   agent,
+  evaluationAgent,
 }: {
   systemPrompt: string;
   taskBatch: TaskItem[];
   agent: Agent;
+  evaluationAgent: Agent;
 }): Promise<Report> => {
   // Ollamaがタイムアウトしたり、APIのレートリミットに引っかかったりするため、逐次処理とする
   const results: ReportItem[] = [];
-  for (const item of taskBatch) {
+  for (const [i, item] of taskBatch.entries()) {
+    logger.info(`Evaluating task ${i + 1} / ${taskBatch.length}`);
+
     const result = await evaluateTaskItem({
       systemPrompt,
       taskItem: item,
       agent,
+      evaluationAgent,
     });
     results.push(result);
   }

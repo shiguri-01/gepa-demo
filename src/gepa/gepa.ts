@@ -1,4 +1,5 @@
 import type { Agent } from "@mastra/core/agent";
+import { logger } from "../logger";
 import { mutatePromptAgent } from "../mastra/agents/mutate-prompt-agent";
 import {
   type Candidate,
@@ -17,15 +18,18 @@ const initPool = async ({
   initialPrompt,
   agent,
   testTaskBatch,
+  evaluationAgent,
 }: {
   initialPrompt: string;
   agent: Agent;
   testTaskBatch: TaskItem[];
+  evaluationAgent: Agent;
 }): Promise<CandidatePool> => {
   const result = await evaluateTaskBatch({
     systemPrompt: initialPrompt,
     taskBatch: testTaskBatch,
     agent,
+    evaluationAgent,
   });
   const scoreList = extractScoresFromReport(result);
 
@@ -35,7 +39,7 @@ const initPool = async ({
     scores: scoreList,
     parentIds: [],
   };
-  console.info("Initial candidate:", initialCandidate);
+  logger.info({ candidate: initialCandidate }, "Initial candidate");
 
   return [initialCandidate];
 };
@@ -91,44 +95,48 @@ export const gepaCycle = async ({
   agent,
   trainTaskBatch,
   testTaskBatch,
+  evaluationAgent,
 }: {
   candidatePool: CandidatePool;
   budget: number;
   agent: Agent;
   trainTaskBatch: TaskItem[];
   testTaskBatch: TaskItem[];
+  evaluationAgent: Agent;
 }): Promise<{ candidatePool: CandidatePool; budget: number }> => {
   if (budget <= 0) {
     return { candidatePool, budget: 0 };
   }
-  console.info("Start cycle");
-  console.info("Remaining budget:", budget);
+  logger.info("Start cycle");
+  logger.info({ budget }, "Remaining budget");
 
   const parent = pickCandidate(candidatePool);
-  console.debug("Selected parent candidate:", parent);
+  logger.debug({ parent }, "Selected parent candidate");
 
   const feedbackReport = await evaluateTaskBatch({
     systemPrompt: parent.prompt,
     taskBatch: trainTaskBatch,
     agent,
+    evaluationAgent,
   });
-  console.debug("Created feedback from parent:", feedbackReport);
+  logger.debug({ feedbackReport }, "Created feedback from parent");
 
   const proposalPrompt = await mutatePrompt(feedbackReport);
-  console.info("Generated proposal prompt:", proposalPrompt);
+  logger.info({ proposalPrompt }, "Generated proposal prompt");
 
   const proposalReport = await evaluateTaskBatch({
     systemPrompt: proposalPrompt,
     taskBatch: trainTaskBatch,
     agent,
+    evaluationAgent,
   });
 
   const parentScores = extractScoresFromReport(feedbackReport);
   const proposalScores = extractScoresFromReport(proposalReport);
-  console.debug("Train evaluation results:", { parentScores, proposalScores });
+  logger.debug({ parentScores, proposalScores }, "Train evaluation results");
   if (isDominated({ baseline: parentScores, target: proposalScores })) {
     // 提案が支配されている場合は採用しない
-    console.info("Proposal dominated by parent on training batch");
+    logger.info("Proposal dominated by parent on training batch");
     return { candidatePool, budget: budget - 1 };
   }
 
@@ -136,16 +144,20 @@ export const gepaCycle = async ({
     systemPrompt: proposalPrompt,
     taskBatch: testTaskBatch,
     agent,
+    evaluationAgent,
   });
   const testScores = extractScoresFromReport(testReport);
-  console.debug("Test evaluation results:", {
-    parentScores: parent.scores,
-    proposalScores: testScores,
-  });
+  logger.debug(
+    {
+      parentScores: parent.scores,
+      proposalScores: testScores,
+    },
+    "Test evaluation results",
+  );
 
   if (isDominated({ baseline: parent.scores, target: testScores })) {
     // 提案が親に支配されている場合は採用しない
-    console.info("Proposal dominated by parent on test batch");
+    logger.info("Proposal dominated by parent on test batch");
     return { candidatePool, budget: budget - 1 };
   }
 
@@ -155,7 +167,7 @@ export const gepaCycle = async ({
     scores: testScores,
     parentIds: [parent.id],
   };
-  console.info("New candidate accepted:", newCandidate);
+  logger.info({ newCandidate }, "New candidate accepted");
 
   // 新しい候補を追加し、パレート最適な候補のみ残す
   const newPool = findParetoFront([...candidatePool, newCandidate]);
@@ -168,17 +180,20 @@ export const runGepa = async ({
   agent,
   trainTaskBatch,
   testTaskBatch,
+  evaluationAgent,
 }: {
   initialPrompt: string;
   budget: number;
   agent: Agent;
   trainTaskBatch: TaskItem[];
   testTaskBatch: TaskItem[];
+  evaluationAgent: Agent;
 }): Promise<Candidate> => {
   let candidatePool = await initPool({
     initialPrompt,
     agent,
     testTaskBatch,
+    evaluationAgent,
   });
   let remainingBudget = budget;
 
@@ -189,13 +204,14 @@ export const runGepa = async ({
       agent,
       trainTaskBatch,
       testTaskBatch,
+      evaluationAgent,
     });
     candidatePool = result.candidatePool;
     remainingBudget = result.budget;
 
     const best = bestCandidate(candidatePool);
-    console.info("Current best candidate:", best);
-    console.info("Current number of candidates in pool:", candidatePool.length);
+    logger.info({ candidatePool }, "Current candidate pool");
+    logger.info({ best }, "Current best candidate");
   }
 
   const best = bestCandidate(candidatePool);
