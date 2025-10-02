@@ -14,5 +14,4 @@ export const logicalThinkingAgent = new Agent({
   }),
 });
 
-export const initialSystemPrompt =
-  "次の問題を解き、`思考プロセス`と`回答`を出力して下さい。";
+export const initialSystemPrompt = "与えられた問題を解いてください";

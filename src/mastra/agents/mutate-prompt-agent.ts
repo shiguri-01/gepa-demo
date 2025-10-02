@@ -1,5 +1,7 @@
 import { google } from "@ai-sdk/google";
 import { Agent } from "@mastra/core/agent";
+import { LibSQLStore } from "@mastra/libsql";
+import { Memory } from "@mastra/memory";
 
 export const mutatePromptAgent = new Agent({
   name: "MutatePromptAgent",
@@ -32,4 +34,9 @@ export const mutatePromptAgent = new Agent({
 説明、分析内容、前置き、JSONのフォーマットは一切含めないでください。
 `,
   model: google("gemini-2.5-flash"),
+  memory: new Memory({
+    storage: new LibSQLStore({
+      url: "file:../mastra.db",
+    }),
+  }),
 });
